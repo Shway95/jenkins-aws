@@ -104,7 +104,7 @@ This makes GitHub notify Jenkins immediately on push.
 
 1. Scroll down to **Build Steps**
 2. Click **Add build step** → **Execute shell**
-3. Enter your shell script. Example:
+3. Enter your first shell script (Build Info):
 
 ```bash
 #!/bin/bash
@@ -131,7 +131,28 @@ echo ""
 echo "Build SUCCESS!"
 ```
 
-4. Click **Save**
+4. Click **Add build step** → **Execute shell** again to add a second step
+5. Enter the second shell script (Repository Info):
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+echo "=== Repository Information ==="
+echo "Branch: $(git branch --show-current)"
+echo "Commit: $(git log -1 --oneline)"
+echo "Author: $(git log -1 --format='%an <%ae>')"
+echo ""
+echo "=== Repository Contents ==="
+ls -la
+echo ""
+echo "=== Recent Commits ==="
+git log --oneline -5
+```
+
+> **Note**: You can add multiple build steps. They run sequentially — if one fails, the rest won't execute (because of `set -euo pipefail`).
+
+6. Click **Save**
 
 ---
 
@@ -142,7 +163,9 @@ echo "Build SUCCESS!"
 1. Go to your project page in Jenkins
 2. Click **Build Now** (left sidebar)
 3. Check **Build History** → click the build number → **Console Output**
-4. You should see the shell script output with build info
+4. You should see output from both build steps:
+   - First step: Build info (build number, job name, system info)
+   - Second step: Repo info (branch, commit, file listing, recent commits)
 
 ### Automatic Test (via Git Push)
 
@@ -174,6 +197,61 @@ echo "Build SUCCESS!"
 jenkins-aws/
 ├── README.md        # This documentation
 └── test.txt         # Test file for triggering builds
+```
+
+---
+
+## Sample Console Output
+
+Here's what a successful build looks like (Build #6):
+
+```
+Started by an SCM change
+Building on the built-in node in workspace /var/lib/jenkins/workspace/shway-freestyle-proj
+Fetching changes from the remote Git repository
+Checking out Revision ee13dc4 (refs/remotes/origin/main)
+Commit message: "chore: fresh change to trigger build"
+
+[shway-freestyle-proj] $ /bin/bash /tmp/jenkins123456.sh
+=========================================
+  Jenkins Freestyle Job - Hello World    
+=========================================
+
+Build Information:
+  Build Number:  6
+  Build ID:      6
+  Job Name:      shway-freestyle-proj
+  Workspace:     /var/lib/jenkins/workspace/shway-freestyle-proj
+  Jenkins URL:   http://13.236.67.54:8080/
+  Node Name:     built-in
+
+System Information:
+  Hostname:      ip-172-31-9-130
+  User:          jenkins
+  Date:          Sun Jul 19 13:16:14 UTC 2026
+  OS:            Linux ip-172-31-9-130 6.17.0-1013-aws
+
+Build SUCCESS!
+
+[shway-freestyle-proj] $ /bin/bash /tmp/jenkins789012.sh
+=== Repository Information ===
+Branch:
+Commit: ee13dc4 chore: fresh change to trigger build
+Author: shwetang95 <shwetang95@outlook.com>
+
+=== Repository Contents ===
+total 32
+-rw-r--r-- 1 jenkins jenkins 6608 Jul 19 13:00 README.md
+-rw-r--r-- 1 jenkins jenkins   38 Jul 19 13:16 test.txt
+
+=== Recent Commits ===
+ee13dc4 chore: fresh change to trigger build
+06b19d9 chore: update test file - commit #4
+bc08e3b docs: add step-by-step Jenkins freestyle project guide
+93a595a test: update file to trigger SCM polling
+b2cad92 test: add test file to trigger Jenkins build
+
+Finished: SUCCESS
 ```
 
 ---
@@ -222,5 +300,6 @@ jenkins-aws/
 | SCM | Git |
 | Repository | `https://github.com/<your-username>/jenkins-aws` |
 | Branch | `*/main` |
-| Trigger | Poll SCM: `* * * * *` |
-| Build Step | Execute shell (Hello World script) |
+| Triggers | GitHub hook trigger + Poll SCM: `* * * * *` |
+| Build Step 1 | Execute shell (Build & System Info) |
+| Build Step 2 | Execute shell (Repository Info & Recent Commits) |
