@@ -429,6 +429,90 @@ Finished: SUCCESS
 
 ---
 
+## Step 14: Add Build Step 4 — Jenkins Predefined Environment Variables
+
+**Where:** Build Steps → **Add build step** → **Execute shell** (add another one)
+
+```bash
+#!/bin/bash
+echo "=== Jenkins Built-in Environment Variables ==="
+echo ""
+echo "Build Information:"
+echo "  BUILD_NUMBER:     ${BUILD_NUMBER}"
+echo "  BUILD_ID:         ${BUILD_ID}"
+echo "  BUILD_DISPLAY_NAME: ${BUILD_DISPLAY_NAME}"
+echo "  BUILD_URL:        ${BUILD_URL}"
+echo "  BUILD_TAG:        ${BUILD_TAG}"
+
+echo ""
+echo "Job Information:"
+echo "  JOB_NAME:         ${JOB_NAME}"
+echo "  JOB_BASE_NAME:    ${JOB_BASE_NAME}"
+echo "  JOB_URL:          ${JOB_URL}"
+
+echo ""
+echo "Workspace:"
+echo "  WORKSPACE:        ${WORKSPACE}"
+echo "  WORKSPACE_TMP:    ${WORKSPACE_TMP}"
+
+echo ""
+echo "SCM Information:"
+echo "  GIT_COMMIT:       ${GIT_COMMIT}"
+echo "  GIT_BRANCH:       ${GIT_BRANCH}"
+echo "  GIT_URL:          ${GIT_URL}"
+
+echo ""
+echo "Node/Agent:"
+echo "  NODE_NAME:        ${NODE_NAME}"
+echo "  NODE_LABELS:      ${NODE_LABELS}"
+echo "  EXECUTOR_NUMBER:  ${EXECUTOR_NUMBER}"
+
+echo ""
+echo "Jenkins:"
+echo "  JENKINS_URL:      ${JENKINS_URL}"
+echo "  JENKINS_HOME:     ${JENKINS_HOME}"
+```
+
+**Why this step:** This shows ALL the predefined environment variables that Jenkins automatically provides to every build. You don't define these anywhere — Jenkins creates them for you.
+
+**Why no `set -euo pipefail` here:** Some of these variables (like `WORKSPACE_TMP`) might not exist in all Jenkins versions. Without `-u`, the script won't crash on undefined variables — it'll just print empty.
+
+**What are Predefined Environment Variables?**
+
+These are variables Jenkins automatically injects into every build. You never define them — they're always available:
+
+| Variable | What It Contains | Example Value |
+|----------|-----------------|---------------|
+| `BUILD_NUMBER` | Auto-incrementing counter | `3` |
+| `BUILD_ID` | Same as BUILD_NUMBER | `3` |
+| `BUILD_DISPLAY_NAME` | Human-readable build name | `#3` |
+| `BUILD_URL` | Full URL to this build | `http://jenkins:8080/job/my-job/3/` |
+| `BUILD_TAG` | Unique identifier | `jenkins-my-job-3` |
+| `JOB_NAME` | Name of the job | `shway-freestyle-project` |
+| `JOB_BASE_NAME` | Job name without folder path | `shway-freestyle-project` |
+| `JOB_URL` | URL to the job page | `http://jenkins:8080/job/my-job/` |
+| `WORKSPACE` | Where code is checked out | `/var/lib/jenkins/workspace/my-job` |
+| `WORKSPACE_TMP` | Temp dir for the build | `/var/lib/jenkins/workspace/my-job@tmp` |
+| `GIT_COMMIT` | Full SHA of the commit | `99fa815dc64e5e1f571477434a0a3e4679b52ed7` |
+| `GIT_BRANCH` | Branch being built | `origin/main` |
+| `GIT_URL` | Git repository URL | `https://github.com/Shway95/jenkins-aws` |
+| `NODE_NAME` | Agent that ran the build | `built-in` |
+| `NODE_LABELS` | Labels on that agent | `built-in` |
+| `EXECUTOR_NUMBER` | Executor slot number | `0` |
+| `JENKINS_URL` | Jenkins server URL | `http://13.236.67.54:8080/` |
+| `JENKINS_HOME` | Jenkins install directory | `/var/lib/jenkins` |
+
+**Predefined vs User-Defined (Parameters):**
+
+| Type | Source | Example |
+|------|--------|---------|
+| **Predefined** | Jenkins creates automatically | `BUILD_NUMBER`, `GIT_COMMIT`, `WORKSPACE` |
+| **User-Defined (Parameters)** | You define in "This project is parameterized" | `BRANCH`, `ENVIRONMENT`, `SKIP_TESTS`, `VERSION` |
+
+Both types are available as `${VARIABLE_NAME}` in your shell scripts. The difference is predefined ones always exist — you don't need to add them.
+
+---
+
 ## How Parameters Flow (Visual)
 
 ```
@@ -445,15 +529,17 @@ User clicks "Build with Parameters"
 └─────────────────────────────┘
          │
          ▼
-Jenkins injects as environment variables
+Jenkins injects ALL variables (user params + predefined)
          │
          ▼
-┌─────────────────────────────┐
-│  Build Step 1: System Info  │ ← Uses ${BUILD_NUMBER}, ${JOB_NAME}
-│  Build Step 2: Repo Info    │ ← Uses git commands
-│  Build Step 3: Deploy       │ ← Uses ${BRANCH}, ${ENVIRONMENT},
-│                             │   ${VERSION}, ${SKIP_TESTS}
-└─────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Build Step 1: System Info               │ ← Uses ${BUILD_NUMBER}, ${JOB_NAME}
+│  Build Step 2: Repo Info                 │ ← Uses git commands
+│  Build Step 3: Parameterized Deploy      │ ← Uses ${BRANCH}, ${ENVIRONMENT},
+│                                          │   ${VERSION}, ${SKIP_TESTS}
+│  Build Step 4: Predefined Env Variables  │ ← Uses ${GIT_COMMIT}, ${BUILD_URL},
+│                                          │   ${NODE_NAME}, ${JENKINS_HOME}
+└──────────────────────────────────────────┘
          │
          ▼
     Build Result: SUCCESS/FAILURE
@@ -533,5 +619,5 @@ kubectl set image deployment/myapp myapp=myapp:${VERSION} -n ${ENVIRONMENT}
 | **Branch** | `**` (all branches) |
 | **Trigger** | SCM Polling every minute (`* * * * *`) |
 | **Parameters** | BRANCH, ENVIRONMENT, SKIP_TESTS, VERSION |
-| **Build Steps** | 3 shell scripts (System Info → Repo Info → Parameterized Deploy) |
+| **Build Steps** | 4 shell scripts (System Info → Repo Info → Parameterized Deploy → Predefined Env Vars) |
 | **Jenkins URL** | https://jenkinsacademics.herovired.com/job/shway-freestyle-project/ |
