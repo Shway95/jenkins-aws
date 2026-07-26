@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         DOCKER_HUB_REPO = "shwetang95/jenkins-aws-app"
-        DOCKER_HUB_CREDENTIALS = "docker-hub-creds"
+        DOCKER_HUB_CREDENTIALS = "docker-hub-creds_shway"
         IMAGE_TAG = "${params.DOCKER_IMAGE_TAG}"
     }
 
